@@ -100,6 +100,18 @@ package object metrics {
   def mean[D <: Datapoint with Relevance](rankings: Array[Array[D]], metric: Array[D] => Double): Double = {
     average(rankings.map(ranking => metric(ranking)))
   }
+  
+  /**
+   * Computes the mean of a metric over a series of rankings and cutting them off at K
+   *
+   * @param rankings The rankings (e.g. per query)
+   * @param metric The metric to use
+   * @param K The cutoff point
+   * @return The mean
+   */
+  def meanAtK[D <: Datapoint with Relevance](rankings: Array[Array[D]], metric: Array[D] => Double, K: Int): Double = {
+    average(rankings.map(ranking => metric(ranking.take(K))))
+  }
 
   /**
     * Computes the average of an iterable of numerics

@@ -19,17 +19,17 @@ class LinearRegressionRankerSpec extends FlatSpec {
 
     // Measure metrics for K@10
     val K = 10
-    val randomRankings = data.map(d => d.datapoints.take(K))
-    val linregRankings = data.map(d => linearRegressionRanker.rank(d.datapoints).take(K))
+    val randomRankings = data.map(d => d.datapoints)
+    val linregRankings = data.map(d => linearRegressionRanker.rank(d.datapoints))
 
     // Ndcg
-    val randomNdcg = metrics.mean(randomRankings, metrics.ndcg[SVMRankDatapoint])
-    val linregNdcg = metrics.mean(linregRankings, metrics.ndcg[SVMRankDatapoint])
+    val randomNdcg = metrics.meanAtK(randomRankings, metrics.ndcg[SVMRankDatapoint], 10)
+    val linregNdcg = metrics.meanAtK(linregRankings, metrics.ndcg[SVMRankDatapoint], 10)
     assert(linregNdcg > randomNdcg)
 
     // MAP
-    val randomMap = metrics.mean(randomRankings, metrics.averagePrecision[SVMRankDatapoint])
-    val linregMap = metrics.mean(linregRankings, metrics.averagePrecision[SVMRankDatapoint])
+    val randomMap = metrics.meanAtK(randomRankings, metrics.averagePrecision[SVMRankDatapoint], 10)
+    val linregMap = metrics.meanAtK(linregRankings, metrics.averagePrecision[SVMRankDatapoint], 10)
     assert(linregMap > randomMap)
   }
 
