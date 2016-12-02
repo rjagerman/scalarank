@@ -1,5 +1,7 @@
 # ScalaRank
 
+[![Build Status](https://travis-ci.org/rjagerman/scalarank.svg?branch=master)](https://travis-ci.org/rjagerman/scalarank)
+
 A modern scala library providing efficient implementations of offline learning to rank algorithms. Under the hood we use
 [nd4j](http://nd4j.org/) and [deeplearning4j](https://deeplearning4j.org/) for our scientific computing and neural
 network needs.
