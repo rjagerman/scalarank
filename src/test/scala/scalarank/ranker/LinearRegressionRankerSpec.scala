@@ -22,8 +22,8 @@ class LinearRegressionRankerSpec extends FlatSpec {
     val randomRankings = testData.map(d => d.datapoints)
     val linregRankings = testData.map(d => linearRegressionRanker.rank(d.datapoints))
 
-    // K = 1, 3, 10
-    Array(1, 3, 10).foreach { K =>
+    // K = 3, 5, 10
+    Array(3, 5, 10).foreach { K =>
 
       // nDCG@K
       val randomNdcgAtK = metrics.meanAtK(randomRankings, metrics.ndcg[SVMRankDatapoint], K)
