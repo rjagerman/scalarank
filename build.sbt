@@ -5,7 +5,7 @@ version := "1.0"
 scalaVersion := "2.11.8"
 
 
-libraryDependencies += "org.nd4j" % "nd4j-native" % "0.6.0" classifier "" classifier "macosx-x86_64"
+libraryDependencies += "org.nd4j" % "nd4j-native-platform" % "0.6.0" % Test
 
 libraryDependencies += "org.nd4j" %% "nd4s" % "0.6.0"
 
