@@ -9,10 +9,10 @@ network needs.
 Included algorithms are:
 * **Oracle**: An oracle ranker that predicts perfectly but requires relevance labels during ranking.
 * **Linear Regression**: A linear regression ranker that ranks by predicting scalar values. 
- 
-The following algorithms are currently in development:
 * **[RankNet](https://www.microsoft.com/en-us/research/publication/learning-to-rank-using-gradient-descent/)**: A
   neural network with a cost function that minimizes number of wrong inversions.
+ 
+The following algorithms are currently in development:
 * **[LambdaRank](http://research.microsoft.com/en-us/um/people/cburges/papers/LambdaRank.pdf)**: An extension to
   RankNet that optimizes non-smooth list-wise metrics directly.
 * **[LambdaMART](http://research.microsoft.com/en-us/um/people/cburges/tech_reports/MSR-TR-2010-82.pdf)**: Variant of
