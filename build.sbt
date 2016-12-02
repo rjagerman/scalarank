@@ -15,3 +15,7 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1" % "test"
 
 classpathTypes += "maven-plugin"
 
+
+fork in Test := true
+
+
