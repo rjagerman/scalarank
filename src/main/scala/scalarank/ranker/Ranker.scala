@@ -18,7 +18,7 @@ trait Ranker[TrainType <: Datapoint with Relevance, RankType <: Datapoint] {
     *
     * @param data The set of labeled data points
     */
-  def train(data: Array[Query[TrainType]]): Unit
+  def train(data: Iterator[Query[TrainType]]): Unit
 
   /**
     * Ranks given set of data points

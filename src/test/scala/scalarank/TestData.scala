@@ -20,6 +20,7 @@ object TestData {
   val featurelessnDCG = 0.937572811083981
 
   val sampleTrainData = readSVMRank("/train.txt")
+  val sampleTestData = readSVMRank("/test.txt")
 
   def readSVMRank(file: String): Array[Query[SVMRankDatapoint]] = {
     val samples = scala.io.Source.fromInputStream(getClass.getResourceAsStream(file)).

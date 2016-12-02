@@ -1,10 +1,12 @@
 package scalarank.ranker
 
 import org.deeplearning4j.nn.api.OptimizationAlgorithm
-import org.deeplearning4j.nn.conf.layers.OutputLayer
+import org.deeplearning4j.nn.conf.layers.{DenseLayer, OutputLayer}
 import org.deeplearning4j.nn.conf.{NeuralNetConfiguration, Updater}
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork
+import org.deeplearning4j.nn.weights.WeightInit
 import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4j.linalg.dataset.api.iterator.DataSetIterator
 import org.nd4j.linalg.factory.Nd4j
 import org.nd4s.Implicits._
 import org.nd4j.linalg.lossfunctions.LossFunctions
@@ -52,9 +54,9 @@ class LinearRegressionRanker[TrainType <: Datapoint with Relevance,RankType <: D
     *
     * @param data The set of labeled data points
     */
-  override def train(data: Array[Query[TrainType]]): Unit = {
+  override def train(data: Iterator[Query[TrainType]]): Unit = {
 
-    val datapoints = data.flatMap(x => x.datapoints)
+    val datapoints = data.toArray.flatMap(x => x.datapoints)
     val labels = datapoints.map(x => x.relevance)
 
     val X = toMatrix[TrainType](datapoints)

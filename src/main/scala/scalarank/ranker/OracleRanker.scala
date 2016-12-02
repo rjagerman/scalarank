@@ -14,7 +14,7 @@ class OracleRanker[T <: Datapoint with Relevance] extends Ranker[T, T] {
     *
     * @param data The set of labeled data points
     */
-  override def train(data: Array[Query[T]]): Unit = {  }
+  override def train(data: Iterator[Query[T]]): Unit = {  }
 
   /**
     * Ranks given set of data points
