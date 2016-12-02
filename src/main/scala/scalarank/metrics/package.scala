@@ -98,7 +98,7 @@ package object metrics {
     * @return The mean
     */
   def mean[D <: Datapoint with Relevance](rankings: Array[Array[D]], metric: Array[D] => Double): Double = {
-    average(rankings.map(ranking => metric(ranking)))
+    meanAtK[D](rankings, metric, rankings.map(r => r.length).max)
   }
   
   /**
