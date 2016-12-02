@@ -12,6 +12,7 @@ class OracleRankerSpec extends FlatSpec {
   "An Oracle ranker" should "rank perfectly on our test data" in {
     val oracle = new OracleRanker[Datapoint with Relevance]
     val data = TestData.featureless
+    oracle.train(Iterator.empty)
     val ranking = oracle.rank(data)
     assert((ranking, ranking.drop(1)).zipped.forall { case (x,y) => x.relevance >= y.relevance })
   }
