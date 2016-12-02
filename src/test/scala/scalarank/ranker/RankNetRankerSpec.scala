@@ -27,28 +27,28 @@ class RankNetRankerSpec extends FlatSpec {
 
       // nDCG@K
       val randomNdcgAtK = metrics.meanAtK(randomRankings, metrics.ndcg[SVMRankDatapoint], K)
-      val linregNdcgAtK = metrics.meanAtK(ranknetRankings, metrics.ndcg[SVMRankDatapoint], K)
-      info(s"Random nDCG@$K: ${randomNdcgAtK.formatted("%.4f")}    RankNet nDCG@$K: ${linregNdcgAtK.formatted("%.4f")}")
-      assert(linregNdcgAtK > randomNdcgAtK)
+      val ranknetNdcgAtK = metrics.meanAtK(ranknetRankings, metrics.ndcg[SVMRankDatapoint], K)
+      info(s"Random nDCG@$K: ${randomNdcgAtK.formatted("%.4f")}    RankNet nDCG@$K: ${ranknetNdcgAtK.formatted("%.4f")}")
+      assert(ranknetNdcgAtK > randomNdcgAtK)
 
       // MAP@K
       val randomMapAtK = metrics.meanAtK(randomRankings, metrics.averagePrecision[SVMRankDatapoint], 10)
-      val linregMapAtK = metrics.meanAtK(ranknetRankings, metrics.averagePrecision[SVMRankDatapoint], 10)
-      info(s"Random MAP@$K:  ${randomMapAtK.formatted("%.4f")}    RankNet MAP@$K:  ${linregMapAtK.formatted("%.4f")}")
-      assert(linregMapAtK > randomMapAtK)
+      val ranknetMapAtK = metrics.meanAtK(ranknetRankings, metrics.averagePrecision[SVMRankDatapoint], 10)
+      info(s"Random MAP@$K:  ${randomMapAtK.formatted("%.4f")}    RankNet MAP@$K:  ${ranknetMapAtK.formatted("%.4f")}")
+      assert(ranknetMapAtK > randomMapAtK)
     }
 
     // nDCG
     val randomNdcg = metrics.mean(randomRankings, metrics.ndcg[SVMRankDatapoint])
-    val linregNdcg = metrics.mean(ranknetRankings, metrics.ndcg[SVMRankDatapoint])
-    info(s"Random nDCG: ${randomNdcg.formatted("%.4f")}    RankNet nDCG: ${linregNdcg.formatted("%.4f")}")
-    assert(linregNdcg > randomNdcg)
+    val ranknetNdcg = metrics.mean(ranknetRankings, metrics.ndcg[SVMRankDatapoint])
+    info(s"Random nDCG: ${randomNdcg.formatted("%.4f")}    RankNet nDCG: ${ranknetNdcg.formatted("%.4f")}")
+    assert(ranknetNdcg > randomNdcg)
 
     // MAP@10
     val randomMap = metrics.mean(randomRankings, metrics.averagePrecision[SVMRankDatapoint])
-    val linregMap = metrics.mean(ranknetRankings, metrics.averagePrecision[SVMRankDatapoint])
-    info(s"Random MAP:  ${randomMap.formatted("%.4f")}    RankNet MAP:  ${linregMap.formatted("%.4f")}")
-    assert(linregMap > randomMap)
+    val ranknetMap = metrics.mean(ranknetRankings, metrics.averagePrecision[SVMRankDatapoint])
+    info(s"Random MAP:  ${randomMap.formatted("%.4f")}    RankNet MAP:  ${ranknetMap.formatted("%.4f")}")
+    assert(ranknetMap > randomMap)
   }
 
 }
