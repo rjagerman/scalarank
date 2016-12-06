@@ -17,19 +17,20 @@ class RankerSpec extends FreeSpec {
   val testData = TestData.sampleTestData
   val featureSize = trainData(0).datapoints(0).features.length()
 
-  "Testing ranker performance (nDCG)" - {
-    "Oracle" in {
-      testRanker(new OracleRanker(), ndcg, "nDCG")
-    }
-    "Random" in {
-      testRanker(new RandomRanker(42), ndcg, "nDCG")
-    }
-    "Linear Regression" in {
-      testRanker(new LinearRegressionRanker(featureSize, seed=42), ndcg, "nDCG")
-    }
-    "RankNet" in {
-      testRanker(new RankNetRanker(featureSize, seed=42), ndcg, "nDCG")
-    }
+  "Testing Oracle ranker performance (nDCG)" in {
+    testRanker(new OracleRanker(), ndcg, "nDCG")
+  }
+
+  "Testing Random ranker performance (nDCG)" in {
+    testRanker(new RandomRanker(42), ndcg, "nDCG")
+  }
+
+  "Testing Linear Regression ranker performance (nDCG)" in {
+    testRanker(new LinearRegressionRanker(featureSize, seed=42), ndcg, "nDCG")
+  }
+
+  "Testing RankNet ranker performance (nDCG)" in {
+    testRanker(new RankNetRanker(featureSize, seed=42), ndcg, "nDCG")
   }
 
   /**
