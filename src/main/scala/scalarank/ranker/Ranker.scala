@@ -1,7 +1,5 @@
 package scalarank.ranker
 
-import org.nd4j.linalg.dataset.api.iterator.DataSetIterator
-
 import scala.reflect.ClassTag
 import scalarank.datapoint.{Datapoint, Query, Relevance}
 
@@ -18,7 +16,15 @@ trait Ranker[TrainType <: Datapoint with Relevance, RankType <: Datapoint] {
     *
     * @param data The set of labeled data points
     */
-  def train(data: Iterator[Query[TrainType]]): Unit
+  def train(data: Iterable[Query[TrainType]]): Unit
+
+  /**
+    * Scores the given set of query-document pairs
+    *
+    * @param data The data set
+    * @return The scores
+    */
+  def score(data: IndexedSeq[RankType]): IndexedSeq[Double]
 
   /**
     * Ranks given set of data points
@@ -26,7 +32,9 @@ trait Ranker[TrainType <: Datapoint with Relevance, RankType <: Datapoint] {
     * @param data The set of data points
     * @return An ordered list of data points
     */
-  def rank(data: Array[RankType]): Array[RankType]
+  def rank[R <: RankType : ClassTag](data: IndexedSeq[R]): IndexedSeq[R] = {
+    sort(data, score(data))
+  }
 
   /**
     * Sorts given data using given set of scores
@@ -35,7 +43,7 @@ trait Ranker[TrainType <: Datapoint with Relevance, RankType <: Datapoint] {
     * @param scores The computed scores
     * @return A sorted array of ranks
     */
-  protected def sort[R <: RankType : ClassTag](data: Array[R], scores: Array[Double]): Array[R] = {
+  protected def sort[R <: RankType : ClassTag](data: IndexedSeq[R], scores: IndexedSeq[Double]): IndexedSeq[R] = {
     data.zip(scores).sortBy(_._2).map(_._1)
   }
 
