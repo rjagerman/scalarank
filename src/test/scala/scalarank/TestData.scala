@@ -22,12 +22,12 @@ object TestData {
   val sampleTrainData = readSVMRank("/train.txt")
   val sampleTestData = readSVMRank("/test.txt")
 
-  def readSVMRank(file: String): Array[Query[SVMRankDatapoint]] = {
+  def readSVMRank(file: String): IndexedSeq[Query[SVMRankDatapoint]] = {
     val samples = scala.io.Source.fromInputStream(getClass.getResourceAsStream(file)).
       getLines.map(l => SVMRankDatapoint(l))
     samples.toArray.groupBy(d => d.qid).map { case (qid, ds) =>
       new Query[SVMRankDatapoint](qid, ds)
-    }.toArray
+    }.toIndexedSeq
   }
 
   /**

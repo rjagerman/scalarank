@@ -8,5 +8,5 @@ branches:
   only:
     - master
 
-script: "sbt clean coverage test"
+script: "travis_wait 30 sbt clean coverage test"
 after_success: "sbt coverageReport coveralls"

@@ -1,5 +1,6 @@
 package scalarank
 
+import scala.reflect.ClassTag
 import scalarank.datapoint.{Datapoint, Relevance}
 import scalarank.ranker.OracleRanker
 
@@ -33,7 +34,7 @@ package object metrics {
     * @param ranking The ranked list
     * @return The precision
     */
-  def precision[D <: Datapoint with Relevance](ranking: Array[D]): Double = {
+  def precision[D <: Datapoint with Relevance](ranking: Seq[D]): Double = {
     ranking.count(d => d.relevance > 0.0).toDouble / ranking.length.toDouble
   }
 
@@ -43,7 +44,7 @@ package object metrics {
     * @param ranking The ranked list
     * @return The average precision
     */
-  def averagePrecision[D <: Datapoint with Relevance](ranking: Array[D]): Double = {
+  def averagePrecision[D <: Datapoint with Relevance](ranking: Seq[D]): Double = {
     val relevantDocuments = ranking.zipWithIndex.filter { case (d, i) => d.relevance != 0.0 }
     average(relevantDocuments.zipWithIndex.map { case ((d, i), c) =>
       (c + 1.0) / (i + 1.0)
@@ -56,7 +57,7 @@ package object metrics {
     * @param ranking The ranked list
     * @return The reciprocal rank
     */
-  def reciprocalRank[D <: Datapoint with Relevance](ranking: Array[D]): Double = {
+  def reciprocalRank[D <: Datapoint with Relevance](ranking: Seq[D]): Double = {
     ranking.indexWhere(d => d.relevance > 0.0) match {
       case -1 => 0.0
       case x => 1.0 / (1 + x).toDouble
@@ -69,7 +70,7 @@ package object metrics {
     * @param ranking The ranked list
     * @return The discounted cumulative gain
     */
-  def dcg[D <: Datapoint with Relevance](ranking: Array[D]): Double = {
+  def dcg[D <: Datapoint with Relevance](ranking: Seq[D]): Double = {
     ranking.zipWithIndex.map {
       case (d, 0) => d.relevance
       case (d, i) => d.relevance * (1.0 / (Math.log(2 + i) / Math.log(2.0)))
@@ -82,9 +83,9 @@ package object metrics {
     * @param ranking The ranked list
     * @return The normalized discounted cumulative gain
     */
-  def ndcg[D <: Datapoint with Relevance](ranking: Array[D]): Double = {
+  def ndcg[D <: Datapoint with Relevance : ClassTag](ranking: Seq[D]): Double = {
     val oracle = new OracleRanker[D]
-    dcg(oracle.rank(ranking)) match {
+    dcg(oracle.rank(ranking.toIndexedSeq)) match {
       case 0 => 0.0
       case perfectDcg => dcg(ranking) / perfectDcg
     }
@@ -97,8 +98,8 @@ package object metrics {
     * @param metric The metric to use
     * @return The mean
     */
-  def mean[D <: Datapoint with Relevance](rankings: Array[Array[D]], metric: Array[D] => Double): Double = {
-    meanAtK[D](rankings, metric, rankings.map(r => r.length).max)
+  def mean[D <: Datapoint with Relevance](rankings: Iterable[Seq[D]], metric: Seq[D] => Double): Double = {
+    meanAtK[D](rankings, metric, rankings.map(r => r.size).max)
   }
   
   /**
@@ -109,7 +110,7 @@ package object metrics {
    * @param K The cutoff point
    * @return The mean
    */
-  def meanAtK[D <: Datapoint with Relevance](rankings: Array[Array[D]], metric: Array[D] => Double, K: Int): Double = {
+  def meanAtK[D <: Datapoint with Relevance](rankings: Iterable[Seq[D]], metric: Seq[D] => Double, K: Int): Double = {
     average(rankings.map(ranking => metric(ranking.take(K))))
   }
 

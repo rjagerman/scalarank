@@ -54,7 +54,7 @@ class LinearRegressionRanker[TrainType <: Datapoint with Relevance,RankType <: D
     *
     * @param data The set of labeled data points
     */
-  override def train(data: Iterator[Query[TrainType]]): Unit = {
+  override def train(data: Iterable[Query[TrainType]]): Unit = {
 
     val datapoints = data.toArray.flatMap(x => x.datapoints)
     val labels = datapoints.map(x => x.relevance)
@@ -71,13 +71,10 @@ class LinearRegressionRanker[TrainType <: Datapoint with Relevance,RankType <: D
     * @param data The set of data points
     * @return An ordered list of data points
     */
-  override def rank(data: Array[RankType]): Array[RankType] = {
-
-    // Compute score predictions
+  override def score(data: IndexedSeq[RankType]): IndexedSeq[Double] = {
     val X = toMatrix(data)
     val y = network.output(X)
-    val scores = (0 until y.length()).toArray.map(i => y(i))
-    sort(data, scores)
+    (0 until y.length()).map(i => y(i))
   }
 
   /**

@@ -5,16 +5,16 @@ import org.deeplearning4j.nn.api.OptimizationAlgorithm
 import org.deeplearning4j.nn.conf.layers.{DenseLayer, OutputLayer}
 import org.deeplearning4j.nn.conf.{NeuralNetConfiguration, Updater}
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork
+import org.deeplearning4j.nn.weights.WeightInit
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.ops.transforms.Transforms._
 import org.nd4j.linalg.factory.Nd4j
 import org.nd4s.Implicits._
-import org.nd4j.linalg.lossfunctions.{ILossFunction, LossFunctions}
+import org.nd4j.linalg.lossfunctions.ILossFunction
 
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 import scalarank.datapoint.{Datapoint, Query, Relevance}
-import scalarank.util.arrayToDenseNet
 
 /**
   * A RankNet ranker that minimizes number of pair-wise inversions
@@ -39,34 +39,54 @@ class RankNetRanker[TrainType <: Datapoint with Relevance,RankType <: Datapoint 
                                                                                             val learningRate: Double = 5e-5)
   extends Ranker[TrainType, RankType] {
 
+  /**
+    * Custom RankNet loss function
+    */
   private val loss = new RankNetLoss(σ)
 
-  // Construct deep network
-  val config = {
-    val listBuilder = new NeuralNetConfiguration.Builder()
+  /**
+    * Neural network
+    */
+  val network = new MultiLayerNetwork({
+
+    // Basic neural network settings
+    var build = new NeuralNetConfiguration.Builder()
       .seed(seed)
       .iterations(1)
       .optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT)
       .learningRate(learningRate)
       .updater(Updater.ADAM)
       .list()
-    val (out, net) = arrayToDenseNet(listBuilder, features, hidden)
-    net.layer(hidden.length, new OutputLayer.Builder(loss)
-        .activation("identity")
-        .nIn(out)
-        .nOut(1)
-        .build())
-        .pretrain(false).backprop(true).build()
-  }
 
-  val network = new MultiLayerNetwork(config)
+    // Construct hidden layers based on array "hidden"
+    var in = features
+    for (h <- hidden.indices) {
+      build = build.layer(h, new DenseLayer.Builder()
+        .nIn(in)
+        .nOut(hidden(h))
+        .activation("relu")
+        .weightInit(WeightInit.XAVIER)
+        .build())
+      in = hidden(h)
+    }
+
+    // Construct output layer with our custom loss function
+    build.layer(hidden.length, new OutputLayer.Builder(loss)
+      .activation("identity")
+      .nIn(in)
+      .nOut(1)
+      .build())
+      .pretrain(false)
+      .backprop(true)
+      .build()
+  })
 
   /**
     * Trains the ranker on a set of labeled data points
     *
     * @param data The set of labeled data points
     */
-  override def train(data: Iterator[Query[TrainType]]): Unit = {
+  override def train(data: Iterable[Query[TrainType]]): Unit = {
 
     for(t <- 0 until iterations) {
       data.foreach { query =>
@@ -99,11 +119,10 @@ class RankNetRanker[TrainType <: Datapoint with Relevance,RankType <: Datapoint 
     * @param data The set of data points
     * @return An ordered list of data points
     */
-  override def rank(data: Array[RankType]): Array[RankType] = {
+  override def score(data: IndexedSeq[RankType]): IndexedSeq[Double] = {
     val X = toMatrix(data)
     val y = network.output(X)
-    val scores = (0 until y.length()).toArray.map(i => y(i))
-    sort(data, scores)
+    (0 until y.length()).map(i => y(i))
   }
 
   /**

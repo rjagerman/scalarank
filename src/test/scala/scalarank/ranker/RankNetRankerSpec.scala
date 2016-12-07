@@ -1,5 +1,8 @@
 package scalarank.ranker
 
+import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4j.linalg.factory.Nd4j
+import org.nd4s.Implicits._
 import org.scalatest.FlatSpec
 
 import scalarank.datapoint.SVMRankDatapoint
@@ -10,45 +13,52 @@ import scalarank.{TestData, metrics}
   */
 class RankNetRankerSpec extends FlatSpec {
 
-  "A RankNet ranker" should "perform better than random" in {
-    val trainData = TestData.sampleTrainData
-    val testData = TestData.sampleTestData
+  "A RankNet loss function" should "be close to 0 when correctly predicted" in {
 
-    val featureSize = trainData(0).datapoints(0).features.length()
-    val rankNetRanker = new RankNetRanker[SVMRankDatapoint, SVMRankDatapoint](featureSize)
-    rankNetRanker.train(trainData.toIterator)
+    // For x_i output 5.0 and set its label as 5.0
+    val s_i = Nd4j.create(Array(5.0))
+    val y_i = 5.0
 
-    // Measure metrics for K@10
-    val randomRankings = testData.map(d => d.datapoints)
-    val ranknetRankings = testData.map(d => rankNetRanker.rank(d.datapoints))
+    // Create loss
+    val loss = new RankNetLoss()
+    loss.s_i = s_i
+    loss.y_i = y_i
 
-    // K = 3, 5, 10
-    Array(3, 5, 10).foreach { K =>
+    // For x_j values predict 0.0 and set outputs to 0.0
+    val labels = Nd4j.create(Array(0.0, 0.0, 0.0))
+    val outputs = Nd4j.create(Array(0.0, 0.0, 0.0))
 
-      // nDCG@K
-      val randomNdcgAtK = metrics.meanAtK(randomRankings, metrics.ndcg[SVMRankDatapoint], K)
-      val ranknetNdcgAtK = metrics.meanAtK(ranknetRankings, metrics.ndcg[SVMRankDatapoint], K)
-      info(s"Random nDCG@$K: ${randomNdcgAtK.formatted("%.4f")}    RankNet nDCG@$K: ${ranknetNdcgAtK.formatted("%.4f")}")
-      assert(ranknetNdcgAtK > randomNdcgAtK)
+    // Compute cost
+    val cost = loss.computeScore(labels, outputs, "identity", null, true)
+    assert(cost < 0.01)
 
-      // MAP@K
-      val randomMapAtK = metrics.meanAtK(randomRankings, metrics.averagePrecision[SVMRankDatapoint], 10)
-      val ranknetMapAtK = metrics.meanAtK(ranknetRankings, metrics.averagePrecision[SVMRankDatapoint], 10)
-      info(s"Random MAP@$K:  ${randomMapAtK.formatted("%.4f")}    RankNet MAP@$K:  ${ranknetMapAtK.formatted("%.4f")}")
-      assert(ranknetMapAtK > randomMapAtK)
-    }
+  }
 
-    // nDCG
-    val randomNdcg = metrics.mean(randomRankings, metrics.ndcg[SVMRankDatapoint])
-    val ranknetNdcg = metrics.mean(ranknetRankings, metrics.ndcg[SVMRankDatapoint])
-    info(s"Random nDCG: ${randomNdcg.formatted("%.4f")}    RankNet nDCG: ${ranknetNdcg.formatted("%.4f")}")
-    assert(ranknetNdcg > randomNdcg)
+  it should "have a gradient ∇ for which: lim h→0 (‖f(x+h) - f(x) - ∇f(x) · h‖ / ‖h‖) ≈ 0" in {
 
-    // MAP@10
-    val randomMap = metrics.mean(randomRankings, metrics.averagePrecision[SVMRankDatapoint])
-    val ranknetMap = metrics.mean(ranknetRankings, metrics.averagePrecision[SVMRankDatapoint])
-    info(s"Random MAP:  ${randomMap.formatted("%.4f")}    RankNet MAP:  ${ranknetMap.formatted("%.4f")}")
-    assert(ranknetMap > randomMap)
+    // For x_i output 5.0 and set its label as 5.0
+    val s_i = Nd4j.create(Array(5.0))
+    val y_i = 5.0
+
+    // Create loss
+    val loss = new RankNetLoss()
+    loss.s_i = s_i
+    loss.y_i = y_i
+
+    // Set up labels and x sample data
+    val labels = Nd4j.create(Array(0.0, 1.0, 0.0, 4.0))
+    val x = Nd4j.create(Array(0.1, -2.0, 7.0, 3.4))
+
+    // Set up gradient check
+    val ε = 1e-5
+    val grad = loss.computeGradient(labels, x, "identity", null) + 1 // + 1 for identity activation function
+    def f(x: INDArray): INDArray = loss.computeScoreArray(labels, x, "identity", null)
+    val h = Nd4j.create(Array(1.0, -1.0, 1.3, -2.0)) * ε
+
+    // Check limit approximate to 0
+    val lim = Nd4j.norm2(f(x+h) - f(x) - grad * h) / Nd4j.norm2(h)
+    assert(lim < 0.01)
+
   }
 
 }
