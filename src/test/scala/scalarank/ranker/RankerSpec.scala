@@ -1,6 +1,6 @@
 package scalarank.ranker
 
-import org.scalatest.FreeSpec
+import org.scalatest.FlatSpec
 
 import scala.collection.mutable
 import scala.reflect.ClassTag
@@ -11,27 +11,11 @@ import scalarank.datapoint.{Datapoint, Query, Relevance, SVMRankDatapoint}
 /**
   * Testing ranker performance
   */
-class RankerSpec extends FreeSpec {
+class RankerSpec extends FlatSpec {
 
   val trainData = TestData.sampleTrainData
   val testData = TestData.sampleTestData
   val featureSize = trainData(0).datapoints(0).features.length()
-
-  "Testing Oracle ranker performance (nDCG)" in {
-    testRanker(new OracleRanker(), ndcg, "nDCG")
-  }
-
-  "Testing Random ranker performance (nDCG)" in {
-    testRanker(new RandomRanker(42), ndcg, "nDCG")
-  }
-
-  "Testing Linear Regression ranker performance (nDCG)" in {
-    testRanker(new LinearRegressionRanker(featureSize, seed=42), ndcg, "nDCG")
-  }
-
-  "Testing RankNet ranker performance (nDCG)" in {
-    testRanker(new RankNetRanker(featureSize, seed=42), ndcg, "nDCG")
-  }
 
   /**
     * Tests a ranker by training it on our training set and testing it on our test set
@@ -39,7 +23,7 @@ class RankerSpec extends FreeSpec {
     * @param ranker The ranker to train and evaluate
     * @param metric The metric to score by
     */
-  def testRanker(ranker: Ranker[SVMRankDatapoint, SVMRankDatapoint],
+  protected def testRanker(ranker: Ranker[SVMRankDatapoint, SVMRankDatapoint],
                  metric: Seq[SVMRankDatapoint] => Double,
                  metricName: String = ""): Unit = {
     ranker.train(trainData)

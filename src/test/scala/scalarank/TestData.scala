@@ -1,6 +1,7 @@
 package scalarank
 
 import org.nd4j.linalg.api.ndarray.INDArray
+import org.nd4s.Implicits._
 
 import scalarank.datapoint.{Datapoint, Query, Relevance, SVMRankDatapoint}
 
@@ -28,6 +29,17 @@ object TestData {
     samples.toArray.groupBy(d => d.qid).map { case (qid, ds) =>
       new Query[SVMRankDatapoint](qid, ds)
     }.toIndexedSeq
+  }
+
+  /**
+    * A test data point with a dense feature vector
+    *
+    * @param f The features as an array of doubles
+    * @param r The relevance
+    */
+  class TestDatapoint(f: Array[Double], r: Double) extends Datapoint with Relevance {
+    override val features: INDArray = f.toNDArray
+    override val relevance: Double = r
   }
 
   /**
