@@ -3,61 +3,71 @@ package scalarank.ranker
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
 import org.nd4s.Implicits._
-import org.scalatest.FlatSpec
+import org.scalatest.{FlatSpec, Matchers}
 
 import scalarank.datapoint.SVMRankDatapoint
+import scalarank.metrics._
 import scalarank.{TestData, metrics}
 
 /**
   * Test specification for the Linear Regression ranker
   */
-class RankNetRankerSpec extends FlatSpec {
+class RankNetRankerSpec extends RankerSpec with GradientCheck with Matchers {
 
-  "A RankNet loss function" should "be close to 0 when correctly predicted" in {
+  "A RankNet ranker" should "report appropriate nDCG results on MQ2008 Fold 1" in {
+    testRanker(new RankNetRanker(featureSize, seed=42), ndcg, "nDCG")
+  }
 
-    // For x_i output 5.0 and set its label as 5.0
-    val s_i = Nd4j.create(Array(5.0))
-    val y_i = 5.0
+  "A RankNet loss function" should "be approximately log(2) when correctly predicted" in {
 
     // Create loss
     val loss = new RankNetLoss()
-    loss.s_i = s_i
-    loss.y_i = y_i
 
-    // For x_j values predict 0.0 and set outputs to 0.0
+    // Single correctly predicted value
     val labels = Nd4j.create(Array(0.0, 0.0, 0.0))
     val outputs = Nd4j.create(Array(0.0, 0.0, 0.0))
 
     // Compute cost
     val cost = loss.computeScore(labels, outputs, "identity", null, true)
-    assert(cost < 0.01)
+    assert(Math.abs(cost - Math.log(2.0)) < 0.0000001)
 
   }
 
-  it should "have a gradient ∇ for which: lim h→0 (‖f(x+h) - f(x) - ∇f(x) · h‖ / ‖h‖) ≈ 0" in {
-
-    // For x_i output 5.0 and set its label as 5.0
-    val s_i = Nd4j.create(Array(5.0))
-    val y_i = 5.0
+  it should "succesfully perform the gradient limit check" in {
 
     // Create loss
     val loss = new RankNetLoss()
-    loss.s_i = s_i
-    loss.y_i = y_i
 
     // Set up labels and x sample data
     val labels = Nd4j.create(Array(0.0, 1.0, 0.0, 4.0))
     val x = Nd4j.create(Array(0.1, -2.0, 7.0, 3.4))
 
-    // Set up gradient check
-    val ε = 1e-5
-    val grad = loss.computeGradient(labels, x, "identity", null) + 1 // + 1 for identity activation function
+    // Check gradient
+    val grad = -loss.computeGradient(labels, x, "identity", null)
     def f(x: INDArray): INDArray = loss.computeScoreArray(labels, x, "identity", null)
-    val h = Nd4j.create(Array(1.0, -1.0, 1.3, -2.0)) * ε
+    val limits = gradientLimits(grad, x, f)
+    info(limits.mkString(" > "))
+    limits.sliding(2).foreach { case Array(l1, l2) => assert(l1 > l2) }
 
-    // Check limit approximate to 0
-    val lim = Nd4j.norm2(f(x+h) - f(x) - grad * h) / Nd4j.norm2(h)
-    assert(lim < 0.01)
+  }
+
+  it should "succesfully compute both the gradient and cost" in {
+
+    // Create loss
+    val loss = new RankNetLoss()
+
+    // Set up labels and x sample data
+    val labels = Nd4j.create(Array(0.0, 1.0, 0.0, 4.0))
+    val x = Nd4j.create(Array(0.1, -2.0, 7.0, 3.4))
+
+    // Compute the gradient and score
+    val gradient = loss.computeGradient(labels, x, "identity", null)
+    val score = loss.computeScore(labels, x, "identity", null, average=true)
+    val gradientAndScore = loss.computeGradientAndScore(labels, x, "identity", null, average=true)
+
+    // Check computation
+    gradientAndScore.getFirst shouldBe score
+    gradientAndScore.getSecond shouldBe gradient
 
   }
 

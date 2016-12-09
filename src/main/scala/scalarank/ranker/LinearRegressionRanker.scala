@@ -30,7 +30,7 @@ import scalarank.datapoint.{Datapoint, Query, Relevance}
   */
 class LinearRegressionRanker[TrainType <: Datapoint with Relevance,RankType <: Datapoint : ClassTag](val features: Int,
                                                                                                      val seed: Int = 42,
-                                                                                                     val iterations: Int = 10,
+                                                                                                     val iterations: Int = 100,
                                                                                                      val learningRate: Double = 1e-3)
   extends Ranker[TrainType, RankType] {
 
