@@ -51,4 +51,24 @@ class RankNetRankerSpec extends RankerSpec with GradientCheck with Matchers {
 
   }
 
+  it should "succesfully compute both the gradient and cost" in {
+
+    // Create loss
+    val loss = new RankNetLoss()
+
+    // Set up labels and x sample data
+    val labels = Nd4j.create(Array(0.0, 1.0, 0.0, 4.0))
+    val x = Nd4j.create(Array(0.1, -2.0, 7.0, 3.4))
+
+    // Compute the gradient and score
+    val gradient = loss.computeGradient(labels, x, "identity", null)
+    val score = loss.computeScore(labels, x, "identity", null, average=true)
+    val gradientAndScore = loss.computeGradientAndScore(labels, x, "identity", null, average=true)
+
+    // Check computation
+    gradientAndScore.getFirst shouldBe score
+    gradientAndScore.getSecond shouldBe gradient
+
+  }
+
 }
