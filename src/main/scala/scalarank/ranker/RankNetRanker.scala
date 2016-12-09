@@ -35,7 +35,7 @@ class RankNetRanker[TrainType <: Datapoint with Relevance,RankType <: Datapoint 
                                                                                             val σ: Double = 1.0,
                                                                                             val hidden: Array[Int] = Array(10),
                                                                                             val seed: Int = 42,
-                                                                                            val iterations: Int = 10,
+                                                                                            val iterations: Int = 20,
                                                                                             val learningRate: Double = 5e-5)
   extends Ranker[TrainType, RankType] {
 
@@ -65,7 +65,7 @@ class RankNetRanker[TrainType <: Datapoint with Relevance,RankType <: Datapoint 
         .nIn(in)
         .nOut(hidden(h))
         .activation("relu")
-        .weightInit(WeightInit.XAVIER)
+        .weightInit(WeightInit.RELU)
         .build())
       in = hidden(h)
     }
@@ -88,26 +88,11 @@ class RankNetRanker[TrainType <: Datapoint with Relevance,RankType <: Datapoint 
     */
   override def train(data: Iterable[Query[TrainType]]): Unit = {
 
-    for(t <- 0 until iterations) {
+    for (t <- 0 until iterations) {
       data.foreach { query =>
-        val datapoints = query.datapoints
-
-        // Iterate over datapoints in this query
-        for (i <- datapoints.indices) {
-
-          // Keep data point x_i fixed
-          val x_i = datapoints(i).features
-          val y_i = datapoints(i).relevance
-          val s_i = network.output(x_i)
-          loss.y_i = y_i
-          loss.s_i = s_i
-
-          // Train on all data points excluding x_i
-          val otherDatapoints = datapoints.zipWithIndex.filter(_._2 != i).map(_._1)
-          val X = toMatrix[TrainType](otherDatapoints)
-          val y = otherDatapoints.map(_.relevance).toNDArray
-          network.fit(X, y)
-        }
+        val X = toMatrix[TrainType](query.datapoints)
+        val y = query.datapoints.map(_.relevance).toNDArray
+        network.fit(X, y)
       }
     }
 
@@ -145,38 +130,28 @@ class RankNetRanker[TrainType <: Datapoint with Relevance,RankType <: Datapoint 
   */
 private class RankNetLoss(σ: Double = 1.0) extends ILossFunction {
 
-  /**
-    * Score of the current (pairwise) comparison sample x_i
-    */
-  var s_i: INDArray = Nd4j.zeros(1)
-
-  /**
-    * Label of the current (pairwise) comparison sample x_i
-    */
-  var y_i: Double = 0.0
-
   override def computeGradientAndScore(labels: INDArray,
                                        preOutput: INDArray,
                                        activationFn: String,
                                        mask: INDArray,
                                        average: Boolean): Pair[java.lang.Double, INDArray] = {
-    val s_j = output(preOutput, activationFn)
-    val S_ij = Sij(labels)
-    Pair.create(score(scoreArray(s_j, S_ij), average), gradient(s_j, S_ij))
+    val S_var = S(labels)
+    val sigma_var = sigma(output(preOutput, activationFn))
+    Pair.create(score(S_var, sigma_var, average), gradient(S_var, sigma_var))
   }
 
   override def computeGradient(labels: INDArray,
                                preOutput: INDArray,
                                activationFn: String,
                                mask: INDArray): INDArray = {
-    gradient(output(preOutput, activationFn), Sij(labels))
+    gradient(S(labels), sigma(output(preOutput, activationFn)))
   }
 
   override def computeScoreArray(labels: INDArray,
                                  preOutput: INDArray,
                                  activationFn: String,
                                  mask: INDArray): INDArray = {
-    scoreArray(output(preOutput, activationFn), Sij(labels))
+    scoreArray(S(labels), sigma(output(preOutput, activationFn)))
   }
 
   override def computeScore(labels: INDArray,
@@ -184,41 +159,71 @@ private class RankNetLoss(σ: Double = 1.0) extends ILossFunction {
                             activationFn: java.lang.String,
                             mask: INDArray,
                             average: Boolean): Double = {
-    score(scoreArray(output(preOutput, activationFn), Sij(labels)), average)
+    score(S(labels), sigma(output(preOutput, activationFn)), average)
   }
 
   /**
-    * Computes dC / ds_j, the derivative with respect to s_j, the network's outputs
+    * Computes the gradient for the full ranking
     *
-    * @param s_j The outputs of the network
-    * @param S_ij The pairwise labels
-    * @return The derivative
+    * @param S The S_ij matrix, indicating whether certain elements should be ranked higher or lower
+    * @param sigma The sigma matrix, indicating how scores relate to each other
+    * @return The gradient
     */
-  private def gradient(s_j: INDArray, S_ij: INDArray): INDArray = {
-    -(-sigmoid((-s_j + s_i) * -σ) + (-S_ij + 1) * 0.5) * σ
+  private def gradient(S: INDArray, sigma: INDArray): INDArray = {
+    Nd4j.mean(((-S + 1)*0.5 - sigmoid(-sigma)) * σ, 0).transpose
   }
 
   /**
-    * Computes the score as an average or sum
+    * Computes the score for the full ranking
     *
-    * @param scoreArray The array of scores
-    * @param average Whether to average or not
-    * @return The cost as a single numerical score
+    * @param S The S_ij matrix, indicating whether certain elements should be ranked higher or lower
+    * @param sigma The sigma matrix, indicating how scores relate to each other
+    * @return The score array
     */
-  private def score(scoreArray: INDArray, average: Boolean): Double = average match {
-    case true => Nd4j.mean(scoreArray)(0)
-    case false => Nd4j.sum(scoreArray)(0)
+  private def scoreArray(S: INDArray, sigma: INDArray): INDArray = {
+    Nd4j.mean((-S + 1) * 0.5 * sigma + log(exp(-sigma) + 1), 0)
   }
 
   /**
-    * Computes the score array
+    * Computes an aggregate over the score, with either summing or averaging
     *
-    * @param s_j The output of the network for every j
-    * @param S_ij The label comparison S_ij
-    * @return The cost function array per sample
+    * @param S The S_ij matrix, indicating whether certain elements should be ranked higher or lower
+    * @param sigma The sigma matrix, indicating how scores relate to each other
+    * @param average Whether to average or sum
+    * @return The score as a single value
     */
-  private def scoreArray(s_j: INDArray, S_ij: INDArray): INDArray = {
-    ((-S_ij - 1) * 0.5 * (-s_j + s_i) * σ) + log(exp((-s_j + s_i) * -σ) + 1)
+  private def score(S: INDArray, sigma: INDArray, average: Boolean): Double = average match {
+    case true => Nd4j.mean(scoreArray(S, sigma))(0)
+    case false => Nd4j.sum(scoreArray(S, sigma))(0)
+  }
+
+  /**
+    * Computes the matrix S_ij, which indicates wheter certain elements should be ranked higher or lower
+    *
+    * S_ij = {
+    *    1.0   if y_i > y_j
+    *    0.0   if y_i = y_j
+    *   -1.0   if y_i < y_j
+    * }
+    *
+    * @param labels The labels
+    * @return The S_ij matrix
+    */
+  private def S(labels: INDArray): INDArray = {
+    val labelMatrix = labels.transpose.mmul(Nd4j.ones(labels.rows, labels.columns)) - Nd4j.ones(labels.columns, labels.rows).mmul(labels)
+    labelMatrix.gt(0) - labelMatrix.lt(0)
+  }
+
+  /**
+    * Computes the sigma matrix, which indicates how scores relate to each other
+    *
+    * sigma_ij = σ * (s_i - s_j)
+    *
+    * @param outputs The signal outputs from the network
+    * @return The sigma matrix
+    */
+  private def sigma(outputs: INDArray): INDArray = {
+    (outputs.transpose.mmul(Nd4j.ones(outputs.rows, outputs.columns)) - Nd4j.ones(outputs.columns, outputs.rows).mmul(outputs)) * σ
   }
 
   /**
@@ -231,18 +236,6 @@ private class RankNetLoss(σ: Double = 1.0) extends ILossFunction {
   private def output(preOutput: INDArray, activationFn: String): INDArray = {
     Nd4j.getExecutioner.execAndReturn(Nd4j.getOpFactory.createTransform(activationFn, preOutput.dup))
   }
-
-  /**
-    * Computes S_ij = {
-    *    1.0  if y_i < y_j
-    *    0.0  if y_i = y_j
-    *   -1.0  if y_i > y_j
-    * }
-    *
-    * @param labels The labels y_j
-    * @return Array with values in {0, -1.0, 1.0}
-    */
-  private def Sij(labels: INDArray): INDArray = labels.gt(y_i) - labels.lt(y_i)
 
 }
 
